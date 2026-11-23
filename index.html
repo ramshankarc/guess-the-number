@@ -53,7 +53,7 @@
     align-items: flex-start; justify-content: center;
   }
 
-  .grid-col { flex: 1; min-width: 0; max-width: 640px; }
+  .grid-col { flex: 1; min-width: 0; max-width: 560px; }
 
   .grid {
     display: grid;
@@ -71,7 +71,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .cell.eligible { background: #0f3460; color: #e0e0ff; cursor: pointer; }
-  .cell.eligible:hover { background: #1a5276; }
+  @media (hover: hover) { .cell.eligible:hover { background: #1a5276; } }
   .cell.selected { background: #ffd166; color: #1a1a2e; cursor: pointer; }
   .cell.eliminated { background: #2a2a3a; color: #555; }
   .cell.guessed { background: #9b2226; color: #888; }
