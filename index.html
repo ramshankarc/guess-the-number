@@ -26,18 +26,22 @@
     margin-bottom: 4px;
   }
   .player {
-    flex: 1; display: flex; align-items: center; justify-content: center;
-    padding: 8px 0; border-radius: 8px; background: #16213e;
+    flex: 0 1 40%; display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 6px 8px; border-radius: 8px; background: #16213e;
     transition: background 0.2s, outline-color 0.2s;
     outline: 2px solid transparent;
   }
   .player.active { background: #0f3460; outline: 2px solid #ffd166; }
   .player .name-input {
     background: transparent; border: none; border-bottom: 1px solid #444;
-    color: #667; font-size: 1.15rem; text-align: center; width: 90%; outline: none;
+    color: #667; font-size: 1.35rem; text-align: center; flex: 1; min-width: 0; outline: none;
     font-weight: 700; transition: color 0.2s;
   }
   .player.active .name-input { color: #ffd166; }
+  .score-badge {
+    background: #ffd166; color: #1a1a2e; font-size: 1.2rem; font-weight: 900;
+    border-radius: 6px; padding: 3px 10px; min-width: 32px; text-align: center;
+  }
   .header .info {
     font-size: 0.95rem; color: #99a; white-space: nowrap; flex-shrink: 0;
   }
@@ -85,7 +89,7 @@
     50% { transform: scale(1.15); }
   }
 
-  .score-col { width: 190px; flex-shrink: 0; }
+  .score-col { width: 190px; flex-shrink: 0; margin-top: 3.4rem; }
   .sidebar-title {
     font-size: 0.75rem; color: #99a; text-transform: uppercase; letter-spacing: 1.5px;
     margin-bottom: 4px; text-align: center; font-weight: 700;
@@ -104,7 +108,6 @@
   .score-table tr:last-child td { border-bottom: none; }
   .score-table .rn { color: #889; font-weight: 600; }
   .score-table .pts-cell { font-weight: 800; font-size: 0.95rem; }
-  .score-table .cum-part { color: #ffd166; font-size: 0.75rem; font-weight: 700; }
   .no-rounds { text-align: center; color: #667; font-size: 0.85rem; padding: 14px 0; }
 
   .bottombar {
@@ -122,6 +125,8 @@
   }
   .bottombar button:active { transform: scale(0.96); }
   .bottombar button:hover { filter: brightness(1.15); }
+  #passBtn { background: #2d6a4f; color: #fff; }
+  #repickBtn { background: #e76f51; color: #fff; }
   #resetBtn { background: #444; color: #ddd; }
   #nextRoundBtn { background: #2d6a4f; color: #fff; font-size: 1.4rem; padding: 14px 36px; }
 
@@ -158,12 +163,14 @@
     <div class="header">
       <div class="player active" id="p1box">
         <input class="name-input" id="p1name" value="Player 1" maxlength="12">
+        <span class="score-badge" id="p1score">0</span>
       </div>
       <div class="info">
         Round <span id="roundNum">1</span>
       </div>
       <div class="player" id="p2box">
         <input class="name-input" id="p2name" value="Player 2" maxlength="12">
+        <span class="score-badge" id="p2score">0</span>
       </div>
     </div>
     <div class="prompt" id="prompt">Player 1: Tap your secret number</div>
@@ -178,6 +185,8 @@
 <div class="bottombar">
   <label>Chances:</label>
   <input type="number" id="chancesInput" min="1" max="20" value="5" onchange="updateChances()">
+  <button id="passBtn" class="hidden" onclick="skipCountdown()">Pass</button>
+  <button id="repickBtn" class="hidden" onclick="undoPick()">Re-pick</button>
   <button id="resetBtn" onclick="resetGame()">Reset</button>
   <button id="nextRoundBtn" class="hidden" onclick="nextRound()">Next Round &#x27A1;</button>
 </div>
@@ -230,21 +239,22 @@
     else setActivePlayer(S.guesserIdx);
   }
 
+  function updateScoreBadges() {
+    document.getElementById('p1score').textContent = S.scores[0];
+    document.getElementById('p2score').textContent = S.scores[1];
+  }
+
   function renderHistory() {
+    updateScoreBadges();
     const el = document.getElementById('scoreHistory');
     if (!S.history.length) { el.innerHTML = '<div class="no-rounds">No rounds yet</div>'; return; }
     let h = '<table class="score-table"><thead><tr><th>R</th><th>' + nm(0) + '</th><th>' + nm(1) + '</th></tr></thead><tbody>';
-    let cum = [0, 0];
     for (const r of S.history) {
       const p1pts = r.p1pts || 0;
       const p2pts = r.p2pts || 0;
-      cum[0] += p1pts;
-      cum[1] += p2pts;
       h += '<tr><td class="rn">' + r.round + '</td>'
-        + '<td class="pts-cell">' + (p1pts ? '<span style="color:#e76f51">+' + p1pts + '</span>' : '<span style="color:#4a9">0</span>')
-        + ' <span class="cum-part">(' + cum[0] + ')</span></td>'
-        + '<td class="pts-cell">' + (p2pts ? '<span style="color:#e76f51">+' + p2pts + '</span>' : '<span style="color:#4a9">0</span>')
-        + ' <span class="cum-part">(' + cum[1] + ')</span></td></tr>';
+        + '<td class="pts-cell">' + (p1pts ? '<span style="color:#e76f51">+' + p1pts + '</span>' : '<span style="color:#4a9">0</span>') + '</td>'
+        + '<td class="pts-cell">' + (p2pts ? '<span style="color:#e76f51">+' + p2pts + '</span>' : '<span style="color:#4a9">0</span>') + '</td></tr>';
     }
     h += '</tbody></table>';
     el.innerHTML = h;
@@ -267,6 +277,8 @@
     document.getElementById('c' + i).className = 'cell ' + cls;
   }
 
+  let _pickTimer = null;
+
   function cellClick(num) {
     if (S.roundOver || S.gameOver) return;
     if (S.phase === 'picking') return;
@@ -286,17 +298,21 @@
     S.secretNumber = num;
     S.phase = 'picking';
     setCellClass(num, 'picked');
+    document.getElementById('repickBtn').classList.remove('hidden');
+    document.getElementById('passBtn').classList.remove('hidden');
     promptEl.textContent = num + ' selected! Pass to ' + nm(S.guesserIdx) + '...';
     save();
     let countdown = 5;
-    const t = setInterval(() => {
+    _pickTimer = setInterval(() => {
       countdown--;
       if (countdown > 0) {
         promptEl.textContent = num + ' selected! Pass to ' + nm(S.guesserIdx) + '... ' + countdown;
       } else {
-        clearInterval(t);
+        clearInterval(_pickTimer);
+        _pickTimer = null;
         setCellClass(num, 'eligible');
         S.phase = 'guess';
+        document.getElementById('passBtn').classList.add('hidden');
         setActivePlayer(S.guesserIdx);
         promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + S.maxChances + ' left)';
         save();
@@ -304,7 +320,32 @@
     }, 1000);
   }
 
+  function skipCountdown() {
+    if (_pickTimer) { clearInterval(_pickTimer); _pickTimer = null; }
+    if (S.secretNumber) setCellClass(S.secretNumber, 'eligible');
+    S.phase = 'guess';
+    document.getElementById('passBtn').classList.add('hidden');
+    setActivePlayer(S.guesserIdx);
+    promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + S.maxChances + ' left)';
+    save();
+  }
+
+  function undoPick() {
+    if (_pickTimer) { clearInterval(_pickTimer); _pickTimer = null; }
+    S.secretNumber = null;
+    S.phase = 'pick';
+    S.cells = Array(100).fill('eligible');
+    S.lo = 1; S.hi = 100;
+    buildGrid();
+    document.getElementById('repickBtn').classList.add('hidden');
+    document.getElementById('passBtn').classList.add('hidden');
+    setActivePlayer(S.pickerIdx);
+    promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
+    save();
+  }
+
   function makeGuess(num) {
+    if (S.chancesUsed === 0) document.getElementById('repickBtn').classList.add('hidden');
     S._evaluating = true;
     setCellClass(num, 'selected');
     S.chancesUsed++;
@@ -454,6 +495,7 @@
       promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
     } else if (S.phase === 'guess' && !S.gameOver) {
       promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + (S.maxChances - S.chancesUsed) + ' left)';
+      if (S.chancesUsed === 0) document.getElementById('repickBtn').classList.remove('hidden');
     }
   }
 
