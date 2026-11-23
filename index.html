@@ -94,6 +94,12 @@
     font-size: 0.75rem; color: #99a; text-transform: uppercase; letter-spacing: 1.5px;
     margin-bottom: 4px; text-align: center; font-weight: 700;
   }
+  #resetBtn {
+    background: none; border: none; color: #99a; cursor: pointer;
+    font-size: 1rem; padding: 0 2px; vertical-align: middle; transition: color 0.2s;
+  }
+  #resetBtn:hover { color: #ddd; }
+  #resetBtn.confirm { color: #e63946; }
   .score-table {
     width: 100%; border-collapse: collapse; font-size: 0.85rem;
     background: #16213e; border-radius: 8px; overflow: hidden;
@@ -127,7 +133,6 @@
   .bottombar button:hover { filter: brightness(1.15); }
   #passBtn { background: #2d6a4f; color: #fff; }
   #repickBtn { background: #e76f51; color: #fff; }
-  #resetBtn { background: #444; color: #ddd; }
   #nextRoundBtn { background: #2d6a4f; color: #fff; font-size: 1.4rem; padding: 14px 36px; }
 
   .log {
@@ -166,7 +171,7 @@
         <span class="score-badge" id="p1score">0</span>
       </div>
       <div class="info">
-        Round <span id="roundNum">1</span>
+        <span id="chancesLeft">5</span> left
       </div>
       <div class="player" id="p2box">
         <input class="name-input" id="p2name" value="Player 2" maxlength="12">
@@ -177,7 +182,7 @@
     <div class="grid" id="grid"></div>
   </div>
   <div class="score-col">
-    <div class="sidebar-title">Score History</div>
+    <div class="sidebar-title">Score History <button id="resetBtn" onclick="resetGame()" title="Reset game">&#x21BA;</button></div>
     <div id="scoreHistory"><div class="no-rounds">No rounds yet</div></div>
   </div>
 </div>
@@ -187,7 +192,6 @@
   <input type="number" id="chancesInput" min="1" max="20" value="5" onchange="updateChances()">
   <button id="passBtn" class="hidden" onclick="skipCountdown()">Pass</button>
   <button id="repickBtn" class="hidden" onclick="undoPick()">Re-pick</button>
-  <button id="resetBtn" onclick="resetGame()">Reset</button>
   <button id="nextRoundBtn" class="hidden" onclick="nextRound()">Next Round &#x27A1;</button>
 </div>
 
@@ -314,7 +318,7 @@
         S.phase = 'guess';
         document.getElementById('passBtn').classList.add('hidden');
         setActivePlayer(S.guesserIdx);
-        promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + S.maxChances + ' left)';
+        promptEl.textContent = nm(S.guesserIdx) + ': Guess the number';
         save();
       }
     }, 1000);
@@ -326,7 +330,7 @@
     S.phase = 'guess';
     document.getElementById('passBtn').classList.add('hidden');
     setActivePlayer(S.guesserIdx);
-    promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + S.maxChances + ' left)';
+    promptEl.textContent = nm(S.guesserIdx) + ': Guess the number';
     save();
   }
 
@@ -384,15 +388,14 @@
 
     if (S.chancesUsed >= S.maxChances) {
       const lastGuess = S.guesses[S.guesses.length - 1];
-      const dist = Math.abs(lastGuess - S.secretNumber);
-      highlightDistance(lastGuess, S.secretNumber);
+      const dist = highlightDistance(lastGuess, S.secretNumber);
       addLog('R' + S.round + ': Answer=' + S.secretNumber + ' Dist=' + dist + ' → ' + nm(S.pickerIdx) + ' +' + dist);
       endRound(dist, 0);
       updateInfo();
       return;
     }
 
-    promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + (S.maxChances - S.chancesUsed) + ' left)';
+    promptEl.textContent = nm(S.guesserIdx) + ': Guess the number';
     save();
   }
 
@@ -402,7 +405,7 @@
   }
 
   function updateInfo() {
-    document.getElementById('roundNum').textContent = S.round;
+    document.getElementById('chancesLeft').textContent = S.maxChances - S.chancesUsed;
     document.getElementById('chancesInput').value = S.maxChances;
   }
 
@@ -413,6 +416,7 @@
   }
 
   function highlightDistance(lastGuess, answer) {
+    const dist = Math.abs(lastGuess - answer);
     const from = Math.min(lastGuess, answer);
     const to = Math.max(lastGuess, answer);
     for (let i = from; i <= to; i++) {
@@ -420,6 +424,7 @@
       else if (i === lastGuess) setCellClass(i, 'closest');
       else setCellClass(i, 'distance');
     }
+    return dist;
   }
 
   function endRound(pickerPts, guesserPts) {
@@ -455,7 +460,18 @@
     save();
   }
 
+  let _resetTimer = null;
   function resetGame() {
+    const btn = document.getElementById('resetBtn');
+    if (!btn.classList.contains('confirm')) {
+      btn.classList.add('confirm');
+      btn.innerHTML = '&#x2715;';
+      _resetTimer = setTimeout(() => { btn.classList.remove('confirm'); btn.innerHTML = '&#x21BA;'; }, 3000);
+      return;
+    }
+    if (_resetTimer) { clearTimeout(_resetTimer); _resetTimer = null; }
+    btn.classList.remove('confirm');
+    btn.textContent = '↺';
     S = {
       maxChances: S.maxChances, chancesUsed: 0, lo: 1, hi: 100,
       gameOver: false, guesses: [], roundOver: false,
@@ -494,7 +510,7 @@
       buildGrid();
       promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
     } else if (S.phase === 'guess' && !S.gameOver) {
-      promptEl.textContent = nm(S.guesserIdx) + ': Tap a number (' + (S.maxChances - S.chancesUsed) + ' left)';
+      promptEl.textContent = nm(S.guesserIdx) + ': Guess the number';
       if (S.chancesUsed === 0) document.getElementById('repickBtn').classList.remove('hidden');
     }
   }
