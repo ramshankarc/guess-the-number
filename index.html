@@ -39,7 +39,6 @@
     color: #e0e0ff; font-size: 1.1rem; text-align: center; width: 110px; outline: none;
     font-weight: 600;
   }
-  .player .score { font-size: 2rem; font-weight: 900; color: #fff; }
 
   .topbar {
     display: flex; gap: 12px; justify-content: center; align-items: center;
@@ -69,26 +68,12 @@
     font-weight: 600;
   }
 
-  .reveal-bar {
-    display: flex; gap: 12px; justify-content: center; align-items: center;
-    flex-wrap: wrap; margin-bottom: 10px;
-  }
-  .reveal-bar label { font-size: 1.1rem; color: #aab; }
-  .reveal-bar input[type="number"] {
-    width: 70px; padding: 8px 10px; border-radius: 8px; border: 2px solid #ffd166;
-    background: #16213e; color: #ffd166; font-size: 1.4rem; text-align: center; font-weight: 700;
-  }
-  .reveal-bar button {
-    padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer;
-    font-size: 1.1rem; font-weight: 700; background: #2d6a4f; color: #eee;
-  }
-  .reveal-bar button:hover { filter: brightness(1.15); }
-
   .points-display {
     text-align: center; margin-bottom: 10px; font-size: 1.2rem; font-weight: 700; line-height: 1.6;
   }
   .points-display .pts { color: #ffd166; font-size: 1.6rem; }
   .points-display .zero { color: #2d6a4f; font-size: 1.6rem; }
+  .points-display .gpts { color: #66d9ff; font-size: 1.6rem; }
 
   .game-area {
     display: flex; gap: 14px; max-width: 880px; margin: 0 auto;
@@ -142,6 +127,8 @@
   .cell.answer { background: #2d6a4f; color: #fff; }
   .cell.distance { background: #e76f51; color: #fff; }
   .cell.closest { background: #f4a261; color: #1a1a2e; }
+  .cell.reveal-eligible { background: #0f3460; color: #e0e0ff; cursor: pointer; outline: 2px solid #ffd166; }
+  .cell.reveal-eligible:hover { background: #1a5276; }
 
   @keyframes pulse {
     0%, 100% { transform: scale(1); }
@@ -162,15 +149,12 @@
     font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;
   }
   .score-table td {
-    padding: 5px 4px; text-align: center; border-bottom: 1px solid #1a1a2e; color: #dde;
+    padding: 6px 4px; text-align: center; border-bottom: 1px solid #1a1a2e; color: #dde;
   }
   .score-table tr:last-child td { border-bottom: none; }
   .score-table .rn { color: #889; font-weight: 600; }
-  .score-table .pk { color: #e76f51; font-weight: 800; font-size: 1rem; }
-  .score-table .zr { color: #4a9; font-weight: 700; }
-  .score-table .cum { color: #ffd166; font-weight: 800; font-size: 0.95rem; }
-  .score-table .total-row { background: #0f3460; }
-  .score-table .total-row td { font-weight: 900; font-size: 1.1rem; color: #ffd166; border: none; }
+  .score-table .pts-cell { font-weight: 800; font-size: 1rem; }
+  .score-table .cum-part { color: #ffd166; font-size: 0.8rem; font-weight: 700; }
   .no-rounds { text-align: center; color: #667; font-size: 0.9rem; padding: 20px 0; }
 
   .log {
@@ -200,12 +184,10 @@
   <div class="player picker" id="p1box">
     <div class="role" id="p1role">Picker</div>
     <div><input class="name-input" id="p1name" value="Player 1" maxlength="12"></div>
-    <div class="score" id="p1score">0</div>
   </div>
   <div class="player guesser" id="p2box">
     <div class="role" id="p2role">Guesser</div>
     <div><input class="name-input" id="p2name" value="Player 2" maxlength="12"></div>
-    <div class="score" id="p2score">0</div>
   </div>
 </div>
 
@@ -216,12 +198,6 @@
 </div>
 
 <div class="prompt" id="prompt">Player 2: Tap a number to guess</div>
-
-<div class="reveal-bar hidden" id="revealBar">
-  <label>Correct number:</label>
-  <input type="number" id="revealInput" min="1" max="100" placeholder="?" aria-label="correct number">
-  <button onclick="revealAnswer()">Reveal</button>
-</div>
 
 <div class="points-display hidden" id="pointsDisplay"></div>
 
@@ -254,10 +230,12 @@
 
 <script>
   const KEY = 'guess_the_number_state';
+  const GUESS_BONUS = [10, 5, 2, 1, 0];
 
   let S = {
     maxChances: 5, chancesUsed: 0, lo: 1, hi: 100,
     currentGuess: null, gameOver: false, guesses: [], roundOver: false,
+    revealMode: false,
     scores: [0, 0], round: 1, pickerIdx: 0, guesserIdx: 1,
     history: [], names: ['Player 1', 'Player 2'],
     cells: Array(100).fill('eligible')
@@ -268,6 +246,10 @@
   const prompt = document.getElementById('prompt');
 
   function nm(i) { return S.names[i]; }
+
+  function guessBonus(guessNum) {
+    return guessNum <= GUESS_BONUS.length ? GUESS_BONUS[guessNum - 1] : 0;
+  }
 
   function save() {
     S.names = [document.getElementById('p1name').value, document.getElementById('p2name').value];
@@ -299,8 +281,6 @@
   }
 
   function updateScoreboard() {
-    document.getElementById('p1score').textContent = S.scores[0];
-    document.getElementById('p2score').textContent = S.scores[1];
     document.getElementById('p1box').className = 'player ' + (S.pickerIdx === 0 ? 'picker' : 'guesser');
     document.getElementById('p2box').className = 'player ' + (S.pickerIdx === 1 ? 'picker' : 'guesser');
     document.getElementById('p1role').textContent = S.pickerIdx === 0 ? 'Picker' : 'Guesser';
@@ -311,15 +291,19 @@
     const el = document.getElementById('scoreHistory');
     if (!S.history.length) { el.innerHTML = '<div class="no-rounds">No rounds yet</div>'; return; }
     let h = '<table class="score-table"><thead><tr><th>R</th><th>' + nm(0) + '</th><th>' + nm(1) + '</th></tr></thead><tbody>';
+    let cum = [0, 0];
     for (const r of S.history) {
-      const p1 = r.pickerIdx === 0 ? r.pts : 0;
-      const p2 = r.pickerIdx === 1 ? r.pts : 0;
+      const p1pts = r.p1pts || 0;
+      const p2pts = r.p2pts || 0;
+      cum[0] += p1pts;
+      cum[1] += p2pts;
       h += '<tr><td class="rn">' + r.round + '</td>'
-        + '<td class="' + (p1 ? 'pk' : 'zr') + '">' + (p1 ? '+' + p1 : '0') + '</td>'
-        + '<td class="' + (p2 ? 'pk' : 'zr') + '">' + (p2 ? '+' + p2 : '0') + '</td></tr>'
-        + '<tr><td></td><td class="cum">' + r.scores[0] + '</td><td class="cum">' + r.scores[1] + '</td></tr>';
+        + '<td class="pts-cell">' + (p1pts ? '<span style="color:#e76f51">+' + p1pts + '</span>' : '<span style="color:#4a9">0</span>')
+        + ' <span class="cum-part">(' + cum[0] + ')</span></td>'
+        + '<td class="pts-cell">' + (p2pts ? '<span style="color:#e76f51">+' + p2pts + '</span>' : '<span style="color:#4a9">0</span>')
+        + ' <span class="cum-part">(' + cum[1] + ')</span></td></tr>';
     }
-    h += '</tbody><tfoot><tr class="total-row"><td>Total</td><td>' + S.scores[0] + '</td><td>' + S.scores[1] + '</td></tr></tfoot></table>';
+    h += '</tbody></table>';
     el.innerHTML = h;
   }
 
@@ -330,7 +314,7 @@
       d.className = 'cell ' + S.cells[i - 1];
       d.textContent = i;
       d.id = 'c' + i;
-      d.onclick = () => pickNumber(i);
+      d.onclick = () => cellClick(i);
       grid.appendChild(d);
     }
   }
@@ -340,8 +324,15 @@
     document.getElementById('c' + i).className = 'cell ' + cls;
   }
 
-  function pickNumber(num) {
-    if (S.gameOver || S.roundOver) return;
+  function cellClick(num) {
+    if (S.roundOver) return;
+
+    if (S.revealMode) {
+      revealAnswer(num);
+      return;
+    }
+
+    if (S.gameOver) return;
     if (S.cells[num - 1] !== 'eligible' && S.cells[num - 1] !== 'selected') return;
 
     if (S.currentGuess && S.currentGuess !== num) {
@@ -375,7 +366,7 @@
     document.getElementById('totalChances').textContent = S.maxChances;
     document.getElementById('roundNum').textContent = S.round;
     document.getElementById('chancesInput').value = S.maxChances;
-    let eligible = S.cells.filter(c => c === 'eligible' || c === 'selected').length;
+    let eligible = S.cells.filter(c => c === 'eligible' || c === 'selected' || c === 'reveal-eligible').length;
     document.getElementById('eligibleCount').textContent = eligible;
   }
 
@@ -385,21 +376,25 @@
     log.prepend(p);
   }
 
-  function highlightDistance(closest, answer) {
-    const from = Math.min(closest, answer);
-    const to = Math.max(closest, answer);
+  function highlightDistance(lastGuess, answer) {
+    const from = Math.min(lastGuess, answer);
+    const to = Math.max(lastGuess, answer);
     for (let i = from; i <= to; i++) {
       if (i === answer) setCellClass(i, 'answer');
-      else if (i === closest) setCellClass(i, 'closest');
+      else if (i === lastGuess) setCellClass(i, 'closest');
       else setCellClass(i, 'distance');
     }
   }
 
-  function endRound(pts, msg) {
-    S.scores[S.pickerIdx] += pts;
-    S.history.push({ round: S.round, pickerIdx: S.pickerIdx, pts: pts, scores: [S.scores[0], S.scores[1]] });
+  function endRound(pickerPts, guesserPts, msg) {
+    S.scores[S.pickerIdx] += pickerPts;
+    S.scores[S.guesserIdx] += guesserPts;
+    const p1pts = (S.pickerIdx === 0 ? pickerPts : guesserPts);
+    const p2pts = (S.pickerIdx === 1 ? pickerPts : guesserPts);
+    S.history.push({ round: S.round, pickerIdx: S.pickerIdx, p1pts: p1pts, p2pts: p2pts });
     S.roundOver = true;
     S.gameOver = true;
+    S.revealMode = false;
     updateScoreboard();
     renderHistory();
     setFbActive(false);
@@ -412,28 +407,46 @@
 
   function showReveal() {
     S.gameOver = true;
+    S.revealMode = true;
     setFbActive(false);
-    document.getElementById('revealBar').classList.remove('hidden');
-    prompt.textContent = nm(S.pickerIdx) + ': Enter the correct number';
-    document.getElementById('revealInput').focus();
+    for (let i = 1; i <= 100; i++) {
+      const cls = S.cells[i - 1];
+      if (cls === 'eligible') setCellClass(i, 'reveal-eligible');
+    }
+    prompt.textContent = nm(S.pickerIdx) + ': Tap the correct number on the grid';
     save();
   }
 
-  function revealAnswer() {
-    const val = +document.getElementById('revealInput').value;
+  function revealAnswer(val) {
     if (!val || val < 1 || val > 100) return;
-    document.getElementById('revealBar').classList.add('hidden');
+
+    for (let i = 1; i <= 100; i++) {
+      if (S.cells[i - 1] === 'reveal-eligible') setCellClass(i, 'eligible');
+    }
+
+    const wasGuessed = S.guesses.includes(val);
 
     const lastGuess = S.guesses[S.guesses.length - 1];
     const dist = Math.abs(lastGuess - val);
 
     highlightDistance(lastGuess, val);
-    addLog('R' + S.round + ': Answer=' + val + ' Last guess=' + lastGuess + ' Dist=' + dist + ' → ' + nm(S.pickerIdx) + ' +' + dist);
 
-    endRound(dist,
-      'Answer: <strong>' + val + '</strong> &nbsp;|&nbsp; Last guess: <strong>' + lastGuess
-      + '</strong> &nbsp;|&nbsp; Distance: <strong>' + dist
-      + '</strong><br>' + nm(S.pickerIdx) + ' scores <span class="pts">+' + dist + ' pts</span>');
+    if (wasGuessed) {
+      setCellClass(val, 'correct');
+      addLog('R' + S.round + ': Answer=' + val + ' was already guessed! ' + nm(S.pickerIdx) + ' +0');
+      const bonus = guessBonus(S.guesses.indexOf(val) + 1);
+      endRound(0, bonus,
+        'Answer: <strong>' + val + '</strong> — was already guessed!<br>'
+        + nm(S.pickerIdx) + ' scores <span class="zero">+0 pts</span>'
+        + (bonus ? '<br>' + nm(S.guesserIdx) + ' scores <span class="gpts">+' + bonus + ' speed bonus</span>' : ''));
+    } else {
+      addLog('R' + S.round + ': Answer=' + val + ' Last=' + lastGuess + ' Dist=' + dist + ' → ' + nm(S.pickerIdx) + ' +' + dist);
+      endRound(dist, 0,
+        'Answer: <strong>' + val + '</strong> &nbsp;|&nbsp; Last guess: <strong>' + lastGuess
+        + '</strong> &nbsp;|&nbsp; Distance: <strong>' + dist
+        + '</strong><br>' + nm(S.pickerIdx) + ' scores <span class="pts">+' + dist + ' pts</span>');
+    }
+    updateInfo();
   }
 
   function giveFeedback(fb) {
@@ -447,11 +460,13 @@
       for (let i = 1; i <= 100; i++) {
         if (i !== S.currentGuess && S.cells[i - 1] === 'eligible') setCellClass(i, 'eliminated');
       }
-      addLog('R' + S.round + ': ' + S.currentGuess + ' Correct! ' + nm(S.pickerIdx) + ' +0');
-      endRound(0,
+      const bonus = guessBonus(S.chancesUsed);
+      addLog('R' + S.round + ': ' + S.currentGuess + ' Correct! ' + nm(S.guesserIdx) + ' +' + bonus + ' ' + nm(S.pickerIdx) + ' +0');
+      endRound(0, bonus,
         nm(S.guesserIdx) + ' nailed it in ' + S.chancesUsed
-        + ' guess' + (S.chancesUsed > 1 ? 'es' : '') + '!<br>'
-        + nm(S.pickerIdx) + ' scores <span class="zero">+0 pts</span>');
+        + ' guess' + (S.chancesUsed > 1 ? 'es' : '') + '!'
+        + (bonus ? '<br>' + nm(S.guesserIdx) + ' scores <span class="gpts">+' + bonus + ' speed bonus</span>' : '')
+        + '<br>' + nm(S.pickerIdx) + ' scores <span class="zero">+0 pts</span>');
       updateInfo();
       return;
     }
@@ -490,14 +505,13 @@
     S.guesserIdx = S.guesserIdx === 0 ? 1 : 0;
     S.chancesUsed = 0; S.lo = 1; S.hi = 100;
     S.currentGuess = null; S.gameOver = false; S.roundOver = false;
+    S.revealMode = false;
     S.guesses = [];
     S.cells = Array(100).fill('eligible');
     log.innerHTML = '';
     setFbActive(false);
-    document.getElementById('revealBar').classList.add('hidden');
     document.getElementById('pointsDisplay').classList.add('hidden');
     document.getElementById('nextRoundBtn').classList.add('hidden');
-    document.getElementById('revealInput').value = '';
     prompt.textContent = nm(S.guesserIdx) + ': Tap a number to guess';
     updateScoreboard();
     buildGrid();
@@ -509,6 +523,7 @@
     S = {
       maxChances: S.maxChances, chancesUsed: 0, lo: 1, hi: 100,
       currentGuess: null, gameOver: false, guesses: [], roundOver: false,
+      revealMode: false,
       scores: [0, 0], round: 1, pickerIdx: 0, guesserIdx: 1,
       history: [],
       names: [document.getElementById('p1name').value, document.getElementById('p2name').value],
@@ -516,10 +531,8 @@
     };
     log.innerHTML = '';
     setFbActive(false);
-    document.getElementById('revealBar').classList.add('hidden');
     document.getElementById('pointsDisplay').classList.add('hidden');
     document.getElementById('nextRoundBtn').classList.add('hidden');
-    document.getElementById('revealInput').value = '';
     prompt.textContent = nm(S.guesserIdx) + ': Tap a number to guess';
     updateScoreboard();
     renderHistory();
@@ -543,17 +556,14 @@
     if (S.roundOver) {
       prompt.textContent = 'Round over! Press Next Round.';
       document.getElementById('nextRoundBtn').classList.remove('hidden');
+    } else if (S.revealMode) {
+      prompt.textContent = nm(S.pickerIdx) + ': Tap the correct number on the grid';
     } else if (S.gameOver && S.chancesUsed >= S.maxChances) {
-      document.getElementById('revealBar').classList.remove('hidden');
-      prompt.textContent = nm(S.pickerIdx) + ': Enter the correct number';
+      showReveal();
     } else {
       prompt.textContent = nm(S.guesserIdx) + ': Tap a number to guess';
     }
   }
-
-  document.getElementById('revealInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') revealAnswer();
-  });
 
   ['p1name', 'p2name'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => {
