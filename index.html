@@ -488,18 +488,14 @@
   function updateChances() {
     S.maxChances = +document.getElementById('chancesInput').value || 5;
     updateInfo();
-    if (S.phase === 'guess' && !S.roundOver && S.chancesUsed >= S.maxChances) {
-      setCellClass(S.secretNumber, 'answer');
-      addLog('R' + S.round + ': Answer=' + S.secretNumber);
-      endRound(0, 0);
-      updateInfo();
-    }
     save();
   }
 
   function updateInfo() {
     document.getElementById('chancesLeft').textContent = Math.max(0, S.maxChances - S.chancesUsed);
-    document.getElementById('chancesInput').value = S.maxChances;
+    const sel = document.getElementById('chancesInput');
+    sel.value = S.maxChances;
+    sel.disabled = S.chancesUsed > 0 && !S.roundOver;
     document.getElementById('roundNum').textContent = S.round;
     document.getElementById('turnNum').textContent = S.turn;
   }
