@@ -240,7 +240,7 @@
     secretNumber: null, phase: 'pick',
     scores: [0, 0], round: 1, turn: 1, roundPts: [0, 0],
     pickerIdx: 0, guesserIdx: 1,
-    history: [{ round: 1, p1pts: 0, p2pts: 0 }], names: ['Player 1', 'Player 2'],
+    history: [{ round: 1, p1pts: null, p2pts: null }], names: ['Player 1', 'Player 2'],
     cells: Array(100).fill('eligible'),
     autoMode: false
   };
@@ -286,13 +286,16 @@
     updateScoreBadges();
     const el = document.getElementById('scoreHistory');
     if (!S.history.length) { el.innerHTML = '<div class="no-rounds">No rounds yet</div>'; return; }
+    function fmtPts(v) {
+      if (v === null || v === undefined) return '<span style="color:#667">-</span>';
+      if (v === 0) return '<span style="color:#4a9">0</span>';
+      return '<span style="color:#e76f51">+' + v + '</span>';
+    }
     let h = '<table class="score-table"><thead><tr><th>R</th><th>' + nm(0) + '</th><th>' + nm(1) + '</th></tr></thead><tbody>';
     for (const r of S.history) {
-      const p1pts = r.p1pts || 0;
-      const p2pts = r.p2pts || 0;
       h += '<tr><td class="rn">' + r.round + '</td>'
-        + '<td class="pts-cell">' + (p1pts ? '<span style="color:#e76f51">+' + p1pts + '</span>' : '<span style="color:#667">-</span>') + '</td>'
-        + '<td class="pts-cell">' + (p2pts ? '<span style="color:#e76f51">+' + p2pts + '</span>' : '<span style="color:#667">-</span>') + '</td></tr>';
+        + '<td class="pts-cell">' + fmtPts(r.p1pts) + '</td>'
+        + '<td class="pts-cell">' + fmtPts(r.p2pts) + '</td></tr>';
     }
     h += '</tbody></table>';
     el.innerHTML = h;
@@ -519,7 +522,10 @@
     updateScoreboard();
 
     const cur = S.history[S.history.length - 1];
-    if (cur && cur.round === S.round) { cur.p1pts = S.roundPts[0]; cur.p2pts = S.roundPts[1]; }
+    if (cur && cur.round === S.round) {
+      if (S.guesserIdx === 0) cur.p1pts = S.roundPts[0];
+      else cur.p2pts = S.roundPts[1];
+    }
 
     const btn = document.getElementById('nextRoundBtn');
     if (S.turn === 1) {
@@ -547,7 +553,7 @@
       S.roundPts = [0, 0];
       S.pickerIdx = S.autoMode ? 1 : 0;
       S.guesserIdx = S.autoMode ? 0 : 1;
-      S.history.push({ round: S.round, p1pts: 0, p2pts: 0 });
+      S.history.push({ round: S.round, p1pts: null, p2pts: null });
     }
     S.chancesUsed = 0; S.lo = 1; S.hi = 100;
     S.gameOver = false; S.roundOver = false;
@@ -587,7 +593,7 @@
       secretNumber: null, phase: 'pick',
       scores: [0, 0], round: 1, turn: 1, roundPts: [0, 0],
       pickerIdx: auto ? 1 : 0, guesserIdx: auto ? 0 : 1,
-      history: [{ round: 1, p1pts: 0, p2pts: 0 }],
+      history: [{ round: 1, p1pts: null, p2pts: null }],
       names: [document.getElementById('p1name').value, document.getElementById('p2name').value],
       cells: Array(100).fill('eligible'),
       autoMode: auto
@@ -611,7 +617,7 @@
     if (S.turn === undefined) S.turn = 1;
     if (S.roundPts === undefined) S.roundPts = [0, 0];
     if (!S.history.length || S.history[S.history.length - 1].round !== S.round) {
-      S.history.push({ round: S.round, p1pts: S.roundPts[0], p2pts: S.roundPts[1] });
+      S.history.push({ round: S.round, p1pts: null, p2pts: null });
     }
     document.getElementById('p1name').value = S.names[0];
     document.getElementById('p2name').value = S.names[1];
