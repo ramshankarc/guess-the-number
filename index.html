@@ -426,8 +426,9 @@
 
   function toggleAutoMode() {
     S.autoMode = document.getElementById('autoToggle').checked;
-    if (S.autoMode && S.phase === 'pick') {
-      autoPickSecret();
+    if (S.autoMode) {
+      document.getElementById('repickBtn').classList.add('hidden');
+      if (S.phase === 'pick') autoPickSecret();
     } else if (!S.autoMode && S.phase === 'guess' && S.chancesUsed === 0) {
       S.secretNumber = null;
       S.phase = 'pick';
