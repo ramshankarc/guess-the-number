@@ -223,7 +223,7 @@
 
 <script>
   const KEY = 'guess_the_number_state';
-  const GUESS_BONUS = [10, 5, 2, 1, 0];
+  const GUESS_BONUS = [25, 20, 15, 10, 5];
 
   let S = {
     maxChances: 5, chancesUsed: 0, lo: 1, hi: 100,
@@ -414,8 +414,8 @@
     if (S.chancesUsed >= S.maxChances) {
       const lastGuess = S.guesses[S.guesses.length - 1];
       const dist = highlightDistance(lastGuess, S.secretNumber);
-      addLog('R' + S.round + ': Answer=' + S.secretNumber + ' Dist=' + dist + ' → ' + nm(S.pickerIdx) + ' +' + dist);
-      endRound(dist, 0);
+      addLog('R' + S.round + ': Answer=' + S.secretNumber + ' Dist=' + dist);
+      endRound(0, 0);
       updateInfo();
       return;
     }
