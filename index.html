@@ -519,8 +519,8 @@
     const btn = document.getElementById('resetBtn');
     if (!btn.classList.contains('confirm')) {
       btn.classList.add('confirm');
-      btn.innerHTML = '&#x2715;';
-      _resetTimer = setTimeout(() => { btn.classList.remove('confirm'); btn.innerHTML = '&#x21BA;'; }, 3000);
+      btn.textContent = '✓';
+      _resetTimer = setTimeout(() => { btn.classList.remove('confirm'); btn.textContent = '↺'; }, 3000);
       return;
     }
     if (_resetTimer) { clearTimeout(_resetTimer); _resetTimer = null; }
