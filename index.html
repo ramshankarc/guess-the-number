@@ -130,8 +130,8 @@
     flex-wrap: wrap; margin-top: 6px;
   }
   .bottombar label { font-size: 0.9rem; color: #aab; }
-  .bottombar input[type="number"] {
-    width: 44px; padding: 4px; border-radius: 6px; border: 1px solid #444;
+  .bottombar select {
+    padding: 4px 8px; border-radius: 6px; border: 1px solid #444;
     background: #16213e; color: #eee; font-size: 1rem; text-align: center;
   }
   .toggle-wrap {
@@ -221,7 +221,11 @@
     <label class="toggle"><input type="checkbox" id="autoToggle" onchange="toggleAutoMode()"><span class="slider"></span></label>
   </div>
   <label>Chances:</label>
-  <input type="number" id="chancesInput" min="1" max="20" value="5" onchange="updateChances()">
+  <select id="chancesInput" onchange="updateChances()">
+    <option>1</option><option>2</option><option>3</option><option>4</option>
+    <option selected>5</option><option>6</option><option>7</option><option>8</option>
+    <option>9</option><option>10</option>
+  </select>
   <button id="passBtn" class="hidden" onclick="skipCountdown()">Pass</button>
   <button id="repickBtn" class="hidden" onclick="undoPick()">Re-pick</button>
   <button id="nextRoundBtn" class="hidden" onclick="nextRound()">Next Round &#x27A1;</button>
@@ -481,7 +485,7 @@
   }
 
   function updateChances() {
-    S.maxChances = Math.max(1, Math.min(20, +document.getElementById('chancesInput').value || 5));
+    S.maxChances = +document.getElementById('chancesInput').value || 5;
     updateInfo();
     save();
   }
