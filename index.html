@@ -488,6 +488,12 @@
   function updateChances() {
     S.maxChances = +document.getElementById('chancesInput').value || 5;
     updateInfo();
+    if (S.phase === 'guess' && !S.roundOver && S.chancesUsed >= S.maxChances) {
+      setCellClass(S.secretNumber, 'answer');
+      addLog('R' + S.round + ': Answer=' + S.secretNumber);
+      endRound(0, 0);
+      updateInfo();
+    }
     save();
   }
 
