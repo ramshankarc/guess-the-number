@@ -492,7 +492,7 @@
   }
 
   function updateInfo() {
-    document.getElementById('chancesLeft').textContent = Math.max(0, S.maxChances - S.chancesUsed);
+    document.getElementById('chancesLeft').textContent = S.roundOver ? 0 : Math.max(0, S.maxChances - S.chancesUsed);
     const sel = document.getElementById('chancesInput');
     sel.value = S.maxChances;
     sel.disabled = S.chancesUsed > 0 && !S.roundOver;
