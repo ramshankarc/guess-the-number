@@ -125,6 +125,25 @@
     width: 44px; padding: 4px; border-radius: 6px; border: 1px solid #444;
     background: #16213e; color: #eee; font-size: 1rem; text-align: center;
   }
+  .toggle-wrap {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .toggle-wrap label { font-size: 0.9rem; color: #aab; cursor: pointer; }
+  .toggle {
+    position: relative; width: 40px; height: 22px; cursor: pointer;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle .slider {
+    position: absolute; inset: 0; background: #333; border-radius: 22px;
+    transition: background 0.2s;
+  }
+  .toggle .slider::before {
+    content: ''; position: absolute; left: 3px; top: 3px;
+    width: 16px; height: 16px; border-radius: 50%; background: #888;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle input:checked + .slider { background: #2d6a4f; }
+  .toggle input:checked + .slider::before { transform: translateX(18px); background: #fff; }
   .bottombar button {
     padding: 12px 28px; border-radius: 10px; border: none; cursor: pointer;
     font-size: 1.2rem; font-weight: 700;
@@ -188,6 +207,10 @@
 </div>
 
 <div class="bottombar">
+  <div class="toggle-wrap">
+    <label for="autoToggle">Auto</label>
+    <label class="toggle"><input type="checkbox" id="autoToggle" onchange="toggleAutoMode()"><span class="slider"></span></label>
+  </div>
   <label>Chances:</label>
   <input type="number" id="chancesInput" min="1" max="20" value="5" onchange="updateChances()">
   <button id="passBtn" class="hidden" onclick="skipCountdown()">Pass</button>
@@ -208,7 +231,8 @@
     secretNumber: null, phase: 'pick',
     scores: [0, 0], round: 1, pickerIdx: 0, guesserIdx: 1,
     history: [], names: ['Player 1', 'Player 2'],
-    cells: Array(100).fill('eligible')
+    cells: Array(100).fill('eligible'),
+    autoMode: false
   };
 
   const grid = document.getElementById('grid');
@@ -288,6 +312,7 @@
     if (S.phase === 'picking') return;
 
     if (S.phase === 'pick') {
+      if (S.autoMode) return;
       pickSecret(num);
       return;
     }
@@ -399,6 +424,24 @@
     save();
   }
 
+  function toggleAutoMode() {
+    S.autoMode = document.getElementById('autoToggle').checked;
+    save();
+    if (S.autoMode && S.phase === 'pick') {
+      autoPickSecret();
+    }
+  }
+
+  function autoPickSecret() {
+    S.secretNumber = Math.floor(Math.random() * 100) + 1;
+    S.phase = 'guess';
+    setActivePlayer(S.guesserIdx);
+    promptEl.textContent = nm(S.guesserIdx) + ': Guess the number';
+    document.getElementById('repickBtn').classList.add('hidden');
+    document.getElementById('passBtn').classList.add('hidden');
+    save();
+  }
+
   function updateChances() {
     S.maxChances = Math.max(1, Math.min(20, +document.getElementById('chancesInput').value || 5));
     save();
@@ -453,10 +496,14 @@
     S.cells = Array(100).fill('eligible');
     log.innerHTML = '';
     document.getElementById('nextRoundBtn').classList.add('hidden');
-    promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
     updateScoreboard();
     buildGrid();
     updateInfo();
+    if (S.autoMode) {
+      autoPickSecret();
+    } else {
+      promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
+    }
     save();
   }
 
@@ -479,15 +526,20 @@
       scores: [0, 0], round: 1, pickerIdx: 0, guesserIdx: 1,
       history: [],
       names: [document.getElementById('p1name').value, document.getElementById('p2name').value],
-      cells: Array(100).fill('eligible')
+      cells: Array(100).fill('eligible'),
+      autoMode: document.getElementById('autoToggle').checked
     };
     log.innerHTML = '';
     document.getElementById('nextRoundBtn').classList.add('hidden');
-    promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
     updateScoreboard();
     renderHistory();
     buildGrid();
     updateInfo();
+    if (S.autoMode) {
+      autoPickSecret();
+    } else {
+      promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
+    }
     save();
   }
 
@@ -495,6 +547,7 @@
     load();
     document.getElementById('p1name').value = S.names[0];
     document.getElementById('p2name').value = S.names[1];
+    document.getElementById('autoToggle').checked = !!S.autoMode;
     updateScoreboard();
     renderHistory();
     buildGrid();
@@ -508,10 +561,14 @@
       S.secretNumber = null;
       S.cells = Array(100).fill('eligible');
       buildGrid();
-      promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
+      if (S.autoMode) {
+        autoPickSecret();
+      } else {
+        promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
+      }
     } else if (S.phase === 'guess' && !S.gameOver) {
       promptEl.textContent = nm(S.guesserIdx) + ': Guess the number';
-      if (S.chancesUsed === 0) document.getElementById('repickBtn').classList.remove('hidden');
+      if (S.chancesUsed === 0 && !S.autoMode) document.getElementById('repickBtn').classList.remove('hidden');
     }
   }
 
