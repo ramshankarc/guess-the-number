@@ -412,9 +412,8 @@
     updateInfo();
 
     if (S.chancesUsed >= S.maxChances) {
-      const lastGuess = S.guesses[S.guesses.length - 1];
-      const dist = highlightDistance(lastGuess, S.secretNumber);
-      addLog('R' + S.round + ': Answer=' + S.secretNumber + ' Dist=' + dist);
+      setCellClass(S.secretNumber, 'answer');
+      addLog('R' + S.round + ': Answer=' + S.secretNumber);
       endRound(0, 0);
       updateInfo();
       return;
