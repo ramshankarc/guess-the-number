@@ -88,6 +88,15 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.15); }
   }
+  @keyframes emojifall {
+    0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+  }
+  .emoji-rain {
+    position: fixed; top: 0; font-size: 1.8rem;
+    pointer-events: none; z-index: 999;
+    animation: emojifall linear forwards;
+  }
 
   .score-col { width: 190px; flex-shrink: 0; margin-top: 3.4rem; }
   .sidebar-title {
@@ -388,6 +397,7 @@
       for (let i = 1; i <= 100; i++) {
         if (i !== num && S.cells[i - 1] === 'eligible') setCellClass(i, 'eliminated');
       }
+      celebrationRain();
       const bonus = guessBonus(S.chancesUsed);
       addLog('R' + S.round + ': ' + num + ' Correct! ' + nm(S.guesserIdx) + ' +' + bonus + ' ' + nm(S.pickerIdx) + ' +0');
       endRound(0, bonus);
@@ -446,6 +456,20 @@
     document.getElementById('repickBtn').classList.add('hidden');
     document.getElementById('passBtn').classList.add('hidden');
     save();
+  }
+
+  function celebrationRain() {
+    const emojis = ['🎉', '🥳', '🎊', '⭐', '🏆', '✨'];
+    for (let i = 0; i < 30; i++) {
+      const el = document.createElement('div');
+      el.className = 'emoji-rain';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      el.style.animationDelay = Math.random() * 1 + 's';
+      document.body.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+    }
   }
 
   function updateChances() {
