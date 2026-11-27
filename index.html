@@ -44,8 +44,8 @@
   }
   .header .info {
     font-size: 0.95rem; color: #99a; white-space: nowrap; flex-shrink: 0;
+    font-weight: 600;
   }
-  .header .info span { font-weight: 800; color: #fff; }
 
   .prompt {
     text-align: center; margin-bottom: 2px; font-size: 1.15rem; color: #bbc; height: 1.5em;
@@ -199,7 +199,7 @@
         <span class="score-badge" id="p1score">0</span>
       </div>
       <div class="info">
-        <span id="chancesLeft">5</span> left
+        R<span id="roundNum">1</span>·T<span id="turnNum">1</span>&nbsp; <span id="chancesLeft">5</span> left
       </div>
       <div class="player" id="p2box">
         <input class="name-input" id="p2name" value="Player 2" maxlength="12">
@@ -238,8 +238,9 @@
     maxChances: 5, chancesUsed: 0, lo: 1, hi: 100,
     gameOver: false, guesses: [], roundOver: false,
     secretNumber: null, phase: 'pick',
-    scores: [0, 0], round: 1, pickerIdx: 0, guesserIdx: 1,
-    history: [], names: ['Player 1', 'Player 2'],
+    scores: [0, 0], round: 1, turn: 1, roundPts: [0, 0],
+    pickerIdx: 0, guesserIdx: 1,
+    history: [{ round: 1, p1pts: 0, p2pts: 0 }], names: ['Player 1', 'Player 2'],
     cells: Array(100).fill('eligible'),
     autoMode: false
   };
@@ -290,8 +291,8 @@
       const p1pts = r.p1pts || 0;
       const p2pts = r.p2pts || 0;
       h += '<tr><td class="rn">' + r.round + '</td>'
-        + '<td class="pts-cell">' + (p1pts ? '<span style="color:#e76f51">+' + p1pts + '</span>' : '<span style="color:#4a9">0</span>') + '</td>'
-        + '<td class="pts-cell">' + (p2pts ? '<span style="color:#e76f51">+' + p2pts + '</span>' : '<span style="color:#4a9">0</span>') + '</td></tr>';
+        + '<td class="pts-cell">' + (p1pts ? '<span style="color:#e76f51">+' + p1pts + '</span>' : '<span style="color:#667">-</span>') + '</td>'
+        + '<td class="pts-cell">' + (p2pts ? '<span style="color:#e76f51">+' + p2pts + '</span>' : '<span style="color:#667">-</span>') + '</td></tr>';
     }
     h += '</tbody></table>';
     el.innerHTML = h;
@@ -438,10 +439,14 @@
     if (S.autoMode) {
       document.getElementById('repickBtn').classList.add('hidden');
       document.getElementById('passBtn').classList.add('hidden');
-      if (S.phase === 'pick') autoPickSecret();
+      if (S.phase === 'pick') {
+        if (S.turn === 1) { S.pickerIdx = 1; S.guesserIdx = 0; }
+        autoPickSecret();
+      }
     } else if (!S.autoMode && S.phase === 'guess' && S.chancesUsed === 0) {
       S.secretNumber = null;
       S.phase = 'pick';
+      if (S.turn === 1) { S.pickerIdx = 0; S.guesserIdx = 1; }
       setActivePlayer(S.pickerIdx);
       promptEl.textContent = nm(S.pickerIdx) + ': Tap your secret number';
     }
@@ -480,6 +485,8 @@
   function updateInfo() {
     document.getElementById('chancesLeft').textContent = S.maxChances - S.chancesUsed;
     document.getElementById('chancesInput').value = S.maxChances;
+    document.getElementById('roundNum').textContent = S.round;
+    document.getElementById('turnNum').textContent = S.turn;
   }
 
   function addLog(msg) {
@@ -505,20 +512,43 @@
     S.scores[S.guesserIdx] += guesserPts;
     const p1pts = (S.pickerIdx === 0 ? pickerPts : guesserPts);
     const p2pts = (S.pickerIdx === 1 ? pickerPts : guesserPts);
-    S.history.push({ round: S.round, pickerIdx: S.pickerIdx, p1pts: p1pts, p2pts: p2pts });
+    S.roundPts[0] += p1pts;
+    S.roundPts[1] += p2pts;
     S.roundOver = true;
     S.gameOver = true;
     updateScoreboard();
-    renderHistory();
-    promptEl.textContent = 'Round over — tap Next Round';
-    document.getElementById('nextRoundBtn').classList.remove('hidden');
+
+    const cur = S.history[S.history.length - 1];
+    if (cur && cur.round === S.round) { cur.p1pts = S.roundPts[0]; cur.p2pts = S.roundPts[1]; }
+
+    const btn = document.getElementById('nextRoundBtn');
+    if (S.turn === 1) {
+      renderHistory();
+      promptEl.textContent = 'Turn 1 done — tap Next Turn';
+      btn.textContent = 'Next Turn ➡';
+      btn.classList.remove('hidden');
+    } else {
+      renderHistory();
+      promptEl.textContent = 'Round over — tap Next Round';
+      btn.textContent = 'Next Round ➡';
+      btn.classList.remove('hidden');
+    }
     save();
   }
 
   function nextRound() {
-    S.round++;
-    S.pickerIdx = S.pickerIdx === 0 ? 1 : 0;
-    S.guesserIdx = S.guesserIdx === 0 ? 1 : 0;
+    if (S.turn === 1) {
+      S.turn = 2;
+      S.pickerIdx = S.pickerIdx === 0 ? 1 : 0;
+      S.guesserIdx = S.guesserIdx === 0 ? 1 : 0;
+    } else {
+      S.round++;
+      S.turn = 1;
+      S.roundPts = [0, 0];
+      S.pickerIdx = S.autoMode ? 1 : 0;
+      S.guesserIdx = S.autoMode ? 0 : 1;
+      S.history.push({ round: S.round, p1pts: 0, p2pts: 0 });
+    }
     S.chancesUsed = 0; S.lo = 1; S.hi = 100;
     S.gameOver = false; S.roundOver = false;
     S.secretNumber = null; S.phase = 'pick';
@@ -527,6 +557,7 @@
     log.innerHTML = '';
     document.getElementById('nextRoundBtn').classList.add('hidden');
     updateScoreboard();
+    renderHistory();
     buildGrid();
     updateInfo();
     if (S.autoMode) {
@@ -549,15 +580,17 @@
     if (_resetTimer) { clearTimeout(_resetTimer); _resetTimer = null; }
     btn.classList.remove('confirm');
     btn.textContent = '↺';
+    const auto = document.getElementById('autoToggle').checked;
     S = {
       maxChances: S.maxChances, chancesUsed: 0, lo: 1, hi: 100,
       gameOver: false, guesses: [], roundOver: false,
       secretNumber: null, phase: 'pick',
-      scores: [0, 0], round: 1, pickerIdx: 0, guesserIdx: 1,
-      history: [],
+      scores: [0, 0], round: 1, turn: 1, roundPts: [0, 0],
+      pickerIdx: auto ? 1 : 0, guesserIdx: auto ? 0 : 1,
+      history: [{ round: 1, p1pts: 0, p2pts: 0 }],
       names: [document.getElementById('p1name').value, document.getElementById('p2name').value],
       cells: Array(100).fill('eligible'),
-      autoMode: document.getElementById('autoToggle').checked
+      autoMode: auto
     };
     log.innerHTML = '';
     document.getElementById('nextRoundBtn').classList.add('hidden');
@@ -575,6 +608,11 @@
 
   function restore() {
     load();
+    if (S.turn === undefined) S.turn = 1;
+    if (S.roundPts === undefined) S.roundPts = [0, 0];
+    if (!S.history.length || S.history[S.history.length - 1].round !== S.round) {
+      S.history.push({ round: S.round, p1pts: S.roundPts[0], p2pts: S.roundPts[1] });
+    }
     document.getElementById('p1name').value = S.names[0];
     document.getElementById('p2name').value = S.names[1];
     document.getElementById('autoToggle').checked = !!S.autoMode;
@@ -584,8 +622,15 @@
     updateInfo();
 
     if (S.roundOver) {
-      promptEl.textContent = 'Round over! Press Next Round.';
-      document.getElementById('nextRoundBtn').classList.remove('hidden');
+      const btn = document.getElementById('nextRoundBtn');
+      if (S.turn === 1) {
+        promptEl.textContent = 'Turn 1 done — tap Next Turn';
+        btn.textContent = 'Next Turn ➡';
+      } else {
+        promptEl.textContent = 'Round over — tap Next Round';
+        btn.textContent = 'Next Round ➡';
+      }
+      btn.classList.remove('hidden');
     } else if (S.phase === 'pick' || S.phase === 'picking') {
       S.phase = 'pick';
       S.secretNumber = null;
