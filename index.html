@@ -221,7 +221,7 @@
     <label class="toggle"><input type="checkbox" id="autoToggle" onchange="toggleAutoMode()"><span class="slider"></span></label>
   </div>
   <label>Chances:</label>
-  <input type="number" id="chancesInput" min="1" max="20" value="5" oninput="updateChances()">
+  <input type="number" id="chancesInput" min="1" max="20" value="5" onchange="updateChances()">
   <button id="passBtn" class="hidden" onclick="skipCountdown()">Pass</button>
   <button id="repickBtn" class="hidden" onclick="undoPick()">Re-pick</button>
   <button id="nextRoundBtn" class="hidden" onclick="nextRound()">Next Round &#x27A1;</button>
@@ -487,7 +487,7 @@
   }
 
   function updateInfo() {
-    document.getElementById('chancesLeft').textContent = S.maxChances - S.chancesUsed;
+    document.getElementById('chancesLeft').textContent = Math.max(0, S.maxChances - S.chancesUsed);
     document.getElementById('chancesInput').value = S.maxChances;
     document.getElementById('roundNum').textContent = S.round;
     document.getElementById('turnNum').textContent = S.turn;
