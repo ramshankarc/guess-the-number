@@ -336,6 +336,7 @@
 
     if (S.phase === 'guess') {
       if (S.cells[num - 1] !== 'eligible' || S._evaluating) return;
+      if (S.chancesUsed >= S.maxChances) return;
       makeGuess(num);
     }
   }
