@@ -223,7 +223,7 @@
 
 <script>
   const KEY = 'guess_the_number_state';
-  const GUESS_BONUS = [25, 20, 15, 10, 5];
+
 
   let S = {
     maxChances: 5, chancesUsed: 0, lo: 1, hi: 100,
@@ -242,7 +242,7 @@
   function nm(i) { return S.names[i]; }
 
   function guessBonus(guessNum) {
-    return guessNum <= GUESS_BONUS.length ? GUESS_BONUS[guessNum - 1] : 0;
+    return (S.maxChances - guessNum + 1) * 5;
   }
 
   function save() {
